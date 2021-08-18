@@ -11,15 +11,6 @@ namespace IATKTest
 {
     public class RealtimeDataDemo : MonoBehaviour
     {
-        // Start is called before the first frame update
-        int n;
-        float[] myValsX;
-        float[] myValsY;
-        float[] myValsZ;
-        float[] mySizes;
-        Color[] myColors;
-        View view = null;
-        ViewBuilder vb;
         GameObject visGo = null;
         Visualisation vis = null;
         RealtimeDataSource rtds = null;
@@ -28,7 +19,6 @@ namespace IATKTest
 
         void Start()
         {
-            //CreateCodeBasedDummy();
             StartCoroutine(DelayedInit());
         }
 
@@ -49,13 +39,6 @@ namespace IATKTest
             rtds.AddDimension("DimB", 0, 100);
             rtds.AddDimension("DimC", 0, 100);
             rtds.AddDimension("DimD", 0, 100);
-
-            /*
-            rtds.AddStrDataByStr("names", "DimA");
-            rtds.AddStrDataByStr("names", "DimB");
-            rtds.AddStrDataByStr("names", "DimC");
-            rtds.AddStrDataByStr("names", "DimD");
-            */
 
             rtds.SetData("DimA", 75f);
             rtds.SetData("DimA", 50f);
@@ -142,13 +125,12 @@ namespace IATKTest
         IEnumerator SimulPoints()
         {
             yield return new WaitForSeconds(5f);
-            //view = visGo.GetComponentInChildren<View>();
             while (true)
             {
                 yield return new WaitForSeconds(0.01f);
                 try
                 {
-                    if (rtds)
+                    if (rtds != null)
                     {
                         rtds.SetData("DimA", UnityEngine.Random.value * 100f);
                         rtds.SetData("DimB", UnityEngine.Random.value * 100f);
@@ -158,8 +140,6 @@ namespace IATKTest
                         {
 
                             Debug.Log("-- SimulPoints before vis ...");
-                            //view.TweenPosition();
-                            //vb.updateView();
                             vis.updateView(0);
                             Debug.Log("-- SimulPoints after vis ...");
                         }
