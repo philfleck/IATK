@@ -170,8 +170,13 @@ namespace IATK
 
         private string ConfigurationFileName()
         {
+#if UNITY_UWP || UNITY_WSA || UNITY_WSA_10_0
+            string PathName = Application.persistentDataPath + Path.DirectorySeparatorChar + serializedObjectPath;
+            return PathName + Path.DirectorySeparatorChar + visualisationReference.uid + ".json";
+#else
             string PathName = Application.streamingAssetsPath + Path.DirectorySeparatorChar + serializedObjectPath;
             return PathName + Path.DirectorySeparatorChar + visualisationReference.uid + ".json";
+#endif
         }
 
         /// <summary>
@@ -222,6 +227,7 @@ namespace IATK
                 case AbstractVisualisation.GeometryType.Lines:
                     if (visualisationReference.graphDimension != "Undefined")
                     {
+                        //this is a hard cast to csv datasource
                         CSVDataSource csvds = (CSVDataSource)(visualisationReference.dataSource);
                         builder.createIndicesGraphTopology(csvds.GraphEdges);
                         mt = new Material(Shader.Find("IATK/LinesShader"));
