@@ -10,10 +10,7 @@ namespace IATK
 {
     public class RealtimeDataSource : DataSource
     {
-        /* 
-        The max amount of data that can be displayed at a single time,
-        will loop back around (replacing older data) when it goes over this limit
-        */ 
+        // The max amount of data entries that can be displayed at a single time
         private int dimensionSizeLimit = 100;
         private List<int> dimensionPointers = new List<int>();
 
@@ -24,16 +21,7 @@ namespace IATK
         private Dictionary<string, Dictionary<int, string>> textualDimensionsList = new Dictionary<string, Dictionary<int, string>>();
         private Dictionary<string, Dictionary<string, int>> textualDimensionsListReverse = new Dictionary<string, Dictionary<string, int>>();
 
-        private float[] GetDefaultArray()
-        {
-            var dataArray = new float[dimensionSizeLimit];
-            for (int i = 0; i < dimensionSizeLimit; i++)
-            {
-                dataArray[i] = 0;
-            }
-            return dataArray;
-        }
-
+#region Add Dimension
         /// <summary>
         /// Creates a dimension that can later have data set to it
         /// </summary>
@@ -59,6 +47,12 @@ namespace IATK
             // Don't add the dimension if it already exists
             if (textualDimensionsList.ContainsKey(dimensionName)) return false;
 
+            if (maxVal <= minVal) 
+            {
+                Debug.LogError("maxVal must be larger than minVal");
+                return false;
+            }
+
             var metaData = new DimensionData.Metadata();
             metaData.minValue = minVal;
             metaData.maxValue = maxVal;
@@ -74,10 +68,21 @@ namespace IATK
             dimensionData.Add(dd);
             dimensionPointers.Add(0);
 
-            //Debug.Log("RTDS AddDimension => " + dd.Identifier + ", " + dd.Index);
             return true;
         }
 
+        private float[] GetDefaultArray()
+        {
+            var dataArray = new float[dimensionSizeLimit];
+            for (int i = 0; i < dimensionSizeLimit; i++)
+            {
+                dataArray[i] = 0;
+            }
+            return dataArray;
+        }
+#endregion
+
+#region Set Data
         /// <summary>
         /// Sets a data value by index
         /// </summary>
@@ -88,71 +93,21 @@ namespace IATK
         {
             return SetData(this[index].Identifier, val);
         }
-
-
-        /// <summary>
-        /// This is important otherwise the overloading can NOT be resolved from outside (eg JS)
-        /// </summary>
-        /// <param name="dimensionName"></param>
-        /// <param name="val"></param>
-        /// <returns></returns>
-        public bool SetDataStrVal(string dimensionName, float val)
-        {
-            //Debug.Log("RTDS SetDataStrVal => " + dimensionName + ", " + val);
-            return SetData(dimensionName, val);
-        }
-
-        /// <summary>
-        /// This is important otherwise the overloading can NOT be resolved from outside (eg JS)
-        /// </summary>
-        /// <param name="dimensionName"></param>
-        /// <param name="val"></param>
-        /// <returns></returns>
-        public bool SetDataStrStr(string dimensionName, string val)
-        {
-            return SetData(dimensionName, val);
-        }
+        
         /// <summary>
         /// Sets a data value by dimension name (identifier)
         /// </summary>
         /// <param name="index">Name of dimension</param>
         /// <param name="val">Value to set the dimension</param>
         /// <returns>True if successfully set, false otherwise</returns>
-        public bool SetData(string dimensionName, float val)
+        public bool SetData(string dimensionName, float val, bool cutoffDataToBeInsideMinMaxValues = true)
         {
             try
             {
-                var dd = this[dimensionName];
+                DimensionData dd = this[dimensionName];
 
-                //this is needed since we do not know the data
-                //auto scale start
-                bool dirty = false;
-                var minV = dd.MetaData.minValue;
-                var maxV = dd.MetaData.minValue;
-                if (dd.MetaData.minValue > val)
-                {
-                    minV = (float)Math.Floor(val);
-                    dirty = true;
-                }
+                if (!cutoffDataToBeInsideMinMaxValues) ExpandMinMaxToFitNewValue(dd, val);
 
-                if (dd.MetaData.maxValue < val)
-                {
-                    maxV = (float)Math.Ceiling(val);
-                    dirty = true;
-                }
-
-                if (dirty)
-                {
-                    //Debug.Log("SetData updating min max => " + minV + ", " + maxV);
-                    var metaData = new DimensionData.Metadata();
-                    metaData.minValue = minV;
-                    metaData.maxValue = maxV;
-                    metaData.type = DataType.Float; //maybe make that adjustable
-                    dd.setMetadata(metaData);
-                }
-                //autoscale stop
-
-                //this is going to cut off values and not doind auto normalization for unknown data
                 if (dd != null && dd.MetaData.minValue <= val && dd.MetaData.maxValue >= val && dd.Data.Length > 0)
                 {
                     SetDimensionData(dd, normaliseValue(val, dd.MetaData.minValue, dd.MetaData.maxValue, 0f, 1f));
@@ -207,6 +162,28 @@ namespace IATK
         }
 
         /// <summary>
+        /// This is important otherwise the overloading can NOT be resolved from outside (eg JS)
+        /// </summary>
+        /// <param name="dimensionName"></param>
+        /// <param name="val"></param>
+        /// <returns></returns>
+        public bool SetDataStrVal(string dimensionName, float val)
+        {
+            return SetData(dimensionName, val);
+        }
+
+        /// <summary>
+        /// This is important otherwise the overloading can NOT be resolved from outside (eg JS)
+        /// </summary>
+        /// <param name="dimensionName"></param>
+        /// <param name="val"></param>
+        /// <returns></returns>
+        public bool SetDataStrStr(string dimensionName, string val)
+        {
+            return SetData(dimensionName, val);
+        }
+
+        /// <summary>
         /// Sets a data value to a dimension
         /// </summary>
         /// <param name="dd">The data dimension to put the data in</param>
@@ -217,11 +194,52 @@ namespace IATK
             int ptr = dimensionPointers[dd.Index];
             dd.Data[ptr] = val;
             ptr++;
-            if(ptr >= dimensionSizeLimit) ptr = 0;
+            if (ptr >= dimensionSizeLimit) ptr = 0;
             dimensionPointers[dd.Index] = ptr;
         }
 
+        /// <summary>
+        /// Scales the minValue and minValue filters of DimensionData's MetaData. Used with realtime data when there is an unknown min and max value.
+        /// </summary>
+        /// <param name="dimensionData">The dimension data to alter the metadata of</param>
+        /// <param name="value"> If this value is outside the current min/max values set in the metadata, the min/max values will be expanded to so this value fits inside.</param>
+        private void ExpandMinMaxToFitNewValue(DimensionData dimensionData, float value)
+        {
+            try
+            {
+                bool dirty = false;
+                var minV = dimensionData.MetaData.minValue;
+                var maxV = dimensionData.MetaData.minValue;
 
+                if (dimensionData.MetaData.minValue > value)
+                {
+                    minV = (float)Math.Floor(value);
+                    dirty = true;
+                }
+
+                if (dimensionData.MetaData.maxValue < value)
+                {
+                    maxV = (float)Math.Ceiling(value);
+                    dirty = true;
+                }
+
+                if (dirty)
+                {
+                    var metaData = new DimensionData.Metadata();
+                    metaData.minValue = minV;
+                    metaData.maxValue = maxV;
+                    metaData.type = DataType.Float; //maybe make that adjustable
+                    dimensionData.setMetadata(metaData);
+                }
+            }
+            catch (Exception e)
+            {
+                Debug.Log("SetData ERROR => " + e);
+            }
+        }
+#endregion
+
+#region Boilerplate overrides
         /// <summary>
         /// Gets the dimension data at the specified index.
         /// </summary>
@@ -380,5 +398,6 @@ namespace IATK
         {
             isQuitting = true;
         }
+#endregion
     }
 }
