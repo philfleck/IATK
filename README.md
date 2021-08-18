@@ -173,7 +173,7 @@ View view = vb.updateView().apply(gameObject, mt);
 ## IATK Replicator
 The `Replicator` adds functionality to replicate a visualization either within the same application or to any other target. Depending on the distribution channel uni- and bidirectional connections are realizeable in either *1:1*, *1:n* or *m:n* setups. The core of the replication functionality is the `Replicator` class, which enables to produce and consume replications.
 
-![Realtime DataSource showcase 1](iatkrunner/iatkreplicator.jpg)
+![Realtime DataSource showcase 1](https://user-images.githubusercontent.com/1362512/129921726-81224232-9912-4094-ae47-7a14a3f1302f.jpg)
 Here we see to users using a Hololens each and consuming visualizations. The left one is in control of the replicas, whereas the right one receives the updates. ***Blue*** showns the prime visualization with its controls (MRTK). ***Green*** shows a local replica which behaves the same as remote replicas do. ***Yellow*** shows a replica consume by different user running on a different device running a different application with an active `Replicator`.
 
 ### Initialization
@@ -320,8 +320,8 @@ In a near feature we will support:
 - more geometry (e.g. surfaces / volumes)
 
 ### IATK RealtimeDataSource
-![Realtime DataSource showcase 1](iatkrunner/iatk_rtds_2.gif)
-![Realtime DataSource showcase 1](iatkrunner/iatk_rtds_1.gif)
+![Realtime DataSource showcase 1](https://user-images.githubusercontent.com/1362512/129921909-9325e8c8-ce6f-4b0b-81c4-0331dac586e3.gif)
+![Realtime DataSource showcase 1](https://user-images.githubusercontent.com/1362512/129921937-1607a94c-21cb-4d31-afe2-764dfc9adec2.gif)
 
 
 ## Team
