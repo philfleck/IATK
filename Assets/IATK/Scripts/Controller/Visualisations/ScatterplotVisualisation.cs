@@ -76,7 +76,10 @@ namespace IATK
             {
                 for (int i = 0; i < viewList.Count; i++)
                 {
-                    viewList[i].SetColors(mapColoursPalette(visualisationReference.dataSource[visualisationReference.colorPaletteDimension].Data, visualisationReference.coloursPalette));
+                    if (viewList[i] != null && visualisationReference?.dataSource[visualisationReference?.colorPaletteDimension]?.Data != null)
+                    {
+                        viewList[i].SetColors(mapColoursPalette(visualisationReference.dataSource[visualisationReference.colorPaletteDimension].Data, visualisationReference.coloursPalette));
+                    }
                 }
             }
             else if (viewList.Count > 0 && visualisationReference.colour != null)
@@ -212,7 +215,10 @@ namespace IATK
                         {
                             for (int i = 0; i < viewList.Count; i++)
                             {
-                                viewList[i].SetColors(mapColoursPalette(visualisationReference.dataSource[visualisationReference.colorPaletteDimension].Data, visualisationReference.coloursPalette));
+                                if (viewList[i] != null && visualisationReference?.dataSource[visualisationReference?.colorPaletteDimension]?.Data != null)
+                                {
+                                    viewList[i].SetColors(mapColoursPalette(visualisationReference.dataSource[visualisationReference.colorPaletteDimension].Data, visualisationReference.coloursPalette));
+                                }
                             }
                         }
                         else

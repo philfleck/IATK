@@ -85,7 +85,7 @@ namespace IATK {
             VisualisationHeight = cf.VisualisationHeight;
             VisualisationDepth = cf.VisualisationDepth;
 
-            //added for replication hook
+            // Replication hook
             this.UID = cf.uid;
             if (cf.ReplicationNotification != null) {
                 cf.ReplicationNotification?.Invoke(cf.uid, JsonUtility.ToJson(this));
@@ -162,7 +162,7 @@ namespace IATK {
             Z
         }
         
-        //added report to replication function
+        // Report to replication function
         public Func<string, string, string> ReplicationNotification = null;
         public string uid;
 
