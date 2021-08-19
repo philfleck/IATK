@@ -289,40 +289,39 @@ namespace IATK
         public void UpdateDatasource(string uid, string payload)
         {
             Debug.Log("Replicator::UpdateDatasource uid= " + uid + ", payload=" + payload);
-            if (uid.Length <= 0) return;
-            
-            if (!replicas.ContainsKey(uid)) return;
+            if (uid.Length <= 0 || !replicas.ContainsKey(uid) || payload.Length <= 0) return;
+
             var vis = replicas[uid].vis;
-            if (payload.Length <= 0) return;
             //TODO apply ds hee to vis
             var dsInfo = JsonUtility.FromJson<DataSourceInfo>(payload);
             Debug.Log("Replicator::UpdateDatasource dsInfo => " + dsInfo);
+            if (dsInfo == null || dsInfo.dataSourceDefinitions.Count <= 0) return;
 
-            if (dsInfo == null) return;
             var dsName = dsInfo.dataSourceName;
             var dsTypeStr = dsInfo.dataSourceType;
             Type dsType = Type.GetType(dsTypeStr);
 
             Debug.Log("Replicator::UpdateDatasource type " + dsTypeStr + " vs " + dsType);
+            if (dsType == null || !dsType.Equals(typeof(RealtimeDataSource))) return;
 
-            if (dsType == null) return;
-            Component ds = null;
+
+
             var dsGo = GameObject.Find("replique-" + dsName); //TODO check if it already exists
             if (dsGo == null)
             {
                 dsGo = new GameObject("replique-" + dsName);
-                ds = dsGo.AddComponent(dsType);
+                dsGo.AddComponent(dsType);
             }
-            ds = dsGo.GetComponent(dsType);
+            Component ds = dsGo.GetComponent(dsType);
+            
+
 
             Debug.Log("Replicator::UpdateDatasource created ds ...");
 
-            if (!dsType.Equals(typeof(RealtimeDataSource))) return;
             vis.dataSource = ds as RealtimeDataSource;
             Debug.Log("Replicator::UpdateDatasource set ds to vis ...");
 
             Debug.Log("Replicator::UpdateDatasource found #defs = " + dsInfo.dataSourceDefinitions.Count);
-            if (dsInfo.dataSourceDefinitions.Count <= 0) return;
             foreach (var dsdef in dsInfo.dataSourceDefinitions)
             {
                 if (dsdef.isSetUp)

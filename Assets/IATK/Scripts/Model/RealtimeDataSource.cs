@@ -10,7 +10,7 @@ namespace IATK
 {
     public class RealtimeDataSource : DataSource
     {
-        // The max amount of data entries that can be displayed at a single time
+        // The max amount of data entries that can be displayed at a single time per dimension
         private int dimensionSizeLimit = 100;
         private List<int> dimensionPointers = new List<int>();
 
@@ -18,38 +18,58 @@ namespace IATK
 
         private List<DimensionData> dimensionData = new List<DimensionData>();
         
-        private Dictionary<string, Dictionary<int, string>> textualDimensionsList = new Dictionary<string, Dictionary<int, string>>();
-        private Dictionary<string, Dictionary<string, int>> textualDimensionsListReverse = new Dictionary<string, Dictionary<string, int>>();
+        private Dictionary<string, Dictionary<int, string>> textualDimensionsList = 
+            new Dictionary<string, Dictionary<int, string>>();
+        private Dictionary<string, Dictionary<string, int>> textualDimensionsListReverse = 
+            new Dictionary<string, Dictionary<string, int>>();
+        private Dictionary<string, bool> autoBoundaryScaleList =
+            new Dictionary<string, bool>();
+
 
 #region Add Dimension
         /// <summary>
-        /// Creates a dimension that can later have data set to it
+        /// Creates a new data dimension with unknown min/max values and auto boundary scaleing enabled
+        /// </summary>
+        /// <param name="dimensionName">Sets the dimension name, used to identify the dimension (Must be unique).</param>
+        /// <param name="type">The data type of the dimension</param>
+        /// <returns>True if successfully added, false otherwise</returns>
+        public bool AddDimension(string dimensionName, DataType type = DataType.String)
+        {
+            return AddDimension(dimensionName, 0, 0, type, true);
+        }
+
+        /// <summary>
+        /// Creates a new data dimension
         /// </summary>
         /// <param name="dimensionName">Sets the dimension name, used to identify the dimension (Must be unique).</param>
         /// <param name="numberOfCategories">The data type of categories (unique values) in the data</param>
         /// <param name="type">The data type of the dimension</param>
+        /// <param name="autoBoundaryScale">Should the auto min/max boundary scaleing be enabled</param>
         /// <returns>True if successfully added, false otherwise</returns>
-        public bool AddDimension(string dimensionName, float numberOfCategories, DataType type = DataType.String)
+        public bool AddDimension(string dimensionName, float numberOfCategories,
+                                 DataType type = DataType.String, bool autoBoundaryScale = false)
         {
-            return AddDimension(dimensionName, 0, numberOfCategories - 1f, type);
+            return AddDimension(dimensionName, 0, numberOfCategories - 1f, type, autoBoundaryScale);
         }
 
         /// <summary>
-        /// Creates a dimension that can later have data set to it
+        /// Creates a new data dimension
         /// </summary>
         /// <param name="dimensionName">Sets the dimension name, used to identify the dimension (Must be unique).</param>
         /// <param name="minVal">The minimum value the dimension can hold</param>
         /// <param name="maxVal">The maximum value the dimension can hold</param>
         /// <param name="type">The data type of the dimension</param>
+        /// <param name="autoBoundaryScale">Should the auto min/max boundary scaleing be enabled</param>
         /// <returns>True if successfully added, false otherwise</returns>
-        public bool AddDimension(string dimensionName, float minVal, float maxVal, DataType type = DataType.Float)
+        public bool AddDimension(string dimensionName, float minVal, float maxVal,
+                                 DataType type = DataType.Float, bool autoBoundaryScale = false)
         {
             // Don't add the dimension if it already exists
             if (textualDimensionsList.ContainsKey(dimensionName)) return false;
 
-            if (maxVal <= minVal) 
+            if (maxVal < minVal) 
             {
-                Debug.LogError("maxVal must be larger than minVal");
+                Debug.LogError("maxVal must be larger than or equal to minVal");
                 return false;
             }
 
@@ -62,6 +82,7 @@ namespace IATK
 
             textualDimensionsList.Add(dimensionName, new Dictionary<int, string>());
             textualDimensionsListReverse.Add(dimensionName, new Dictionary<string, int>());
+            autoBoundaryScaleList.Add(dimensionName, autoBoundaryScale);
 
             var dd = new DimensionData(dimensionName, index, metaData);
             dd.setData(GetDefaultArray(), textualDimensionsList);
@@ -100,13 +121,13 @@ namespace IATK
         /// <param name="index">Name of dimension</param>
         /// <param name="val">Value to set the dimension</param>
         /// <returns>True if successfully set, false otherwise</returns>
-        public bool SetData(string dimensionName, float val, bool cutoffDataToBeInsideMinMaxValues = true)
+        public bool SetData(string dimensionName, float val)
         {
             try
             {
                 DimensionData dd = this[dimensionName];
 
-                if (!cutoffDataToBeInsideMinMaxValues) ExpandMinMaxToFitNewValue(dd, val);
+                if (autoBoundaryScaleList[dimensionName]) ExpandMinMaxToFitNewValue(dd, val);
 
                 if (dd != null && dd.MetaData.minValue <= val && dd.MetaData.maxValue >= val && dd.Data.Length > 0)
                 {

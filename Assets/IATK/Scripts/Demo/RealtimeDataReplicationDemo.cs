@@ -15,7 +15,6 @@ namespace IATKTest
 {
     public class RealtimeDataReplicationDemo : MonoBehaviour
     {
-        // Start is called before the first frame update
         GameObject visGo = null;
         Visualisation vis = null;
         RealtimeDataSource rtds = null;
