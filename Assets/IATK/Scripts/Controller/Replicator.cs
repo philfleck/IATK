@@ -3,7 +3,6 @@
 //20210708, initial working version
 
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -290,136 +289,118 @@ namespace IATK
         public void UpdateDatasource(string uid, string payload)
         {
             Debug.Log("Replicator::UpdateDatasource uid= " + uid + ", payload=" + payload);
-            if (uid.Length > 0)
+            if (uid.Length <= 0 || !replicas.ContainsKey(uid) || payload.Length <= 0) return;
+
+            var vis = replicas[uid].vis;
+            //TODO apply ds hee to vis
+            var dsInfo = JsonUtility.FromJson<DataSourceInfo>(payload);
+            Debug.Log("Replicator::UpdateDatasource dsInfo => " + dsInfo);
+            if (dsInfo == null || dsInfo.dataSourceDefinitions.Count <= 0) return;
+
+            var dsName = dsInfo.dataSourceName;
+            var dsTypeStr = dsInfo.dataSourceType;
+            Type dsType = Type.GetType(dsTypeStr);
+
+            Debug.Log("Replicator::UpdateDatasource type " + dsTypeStr + " vs " + dsType);
+            if (dsType == null || !dsType.Equals(typeof(RealtimeDataSource))) return;
+
+
+
+            var dsGo = GameObject.Find("replique-" + dsName); //TODO check if it already exists
+            if (dsGo == null)
             {
-                if (replicas.ContainsKey(uid))
+                dsGo = new GameObject("replique-" + dsName);
+                dsGo.AddComponent(dsType);
+            }
+            Component ds = dsGo.GetComponent(dsType);
+            
+
+
+            Debug.Log("Replicator::UpdateDatasource created ds ...");
+
+            vis.dataSource = ds as RealtimeDataSource;
+            Debug.Log("Replicator::UpdateDatasource set ds to vis ...");
+
+            Debug.Log("Replicator::UpdateDatasource found #defs = " + dsInfo.dataSourceDefinitions.Count);
+            foreach (var dsdef in dsInfo.dataSourceDefinitions)
+            {
+                if (dsdef.isSetUp)
                 {
-                    var vis = replicas[uid].vis;
-                    if (payload.Length > 0)
+                    continue;
+                }
+                var dKey = dsdef.accessKey;
+                var dDimName = dsdef.dimensionName;
+                var dPayload = dsdef.payload;
+
+                Debug.Log("Replicator::UpdateDatasource adding defs => " + dKey + ", " + dDimName);
+
+                var rtds = ds as RealtimeDataSource;
+                vis.dataSource = rtds;
+
+                //rtds.AddDefaultIdDimension();
+                rtds.AddDimension("id", 0, 100);
+                for (var i = 0; i < 100; i++)
+                {
+                    rtds.SetData("id", i);
+                }
+                rtds.AddDimension(dDimName, 0, 100); //was dKey
+                vis.updateView(0);
+
+                Debug.Log("Replicator::UpdateDatasource before calling  GetStreamData");
+
+                if (GetStreamData == null) return;
+                GetStreamData(dPayload, (string topic, string content) =>
+                {
+                    try
                     {
-                        //TODO apply ds hee to vis
-                        var dsInfo = JsonUtility.FromJson<DataSourceInfo>(payload);
-                        Debug.Log("Replicator::UpdateDatasource dsInfo => " + dsInfo);
-
-                        if (dsInfo != null)
-                        {
-                            var dsName = dsInfo.dataSourceName;
-                            var dsTypeStr = dsInfo.dataSourceType;
-                            Type dsType = Type.GetType(dsTypeStr);
-
-                            Debug.Log("Replicator::UpdateDatasource type " + dsTypeStr + " vs " + dsType);
-
-                            if (dsType != null)
-                            {
-                                Component ds = null;
-                                var dsGo = GameObject.Find("replique-" + dsName); //TODO check if it already exists
-                                if (dsGo == null)
-                                {
-                                    dsGo = new GameObject("replique-" + dsName);
-                                    ds = dsGo.AddComponent(dsType);
-                                }
-                                ds = dsGo.GetComponent(dsType);
-
-                                Debug.Log("Replicator::UpdateDatasource created ds ...");
-
-                                if (dsType.Equals(typeof(RealtimeDataSource)))
-                                {
-                                    vis.dataSource = ds as RealtimeDataSource;
-                                    Debug.Log("Replicator::UpdateDatasource set ds to vis ...");
-
-                                    Debug.Log("Replicator::UpdateDatasource found #defs = " + dsInfo.dataSourceDefinitions.Count);
-                                    if (dsInfo.dataSourceDefinitions.Count > 0)
-                                    {
-                                        foreach (var dsdef in dsInfo.dataSourceDefinitions)
-                                        {
-                                            if (dsdef.isSetUp)
-                                            {
-                                                continue;
-                                            }
-                                            var dKey = dsdef.accessKey;
-                                            var dDimName = dsdef.dimensionName;
-                                            var dPayload = dsdef.payload;
-
-                                            Debug.Log("Replicator::UpdateDatasource adding defs => " + dKey + ", " + dDimName);
-
-                                            var rtds = ds as RealtimeDataSource;
-                                            vis.dataSource = rtds;
-
-                                            //rtds.AddDefaultIdDimension();
-                                            rtds.AddDimension("id", 0, 100);
-                                            for (var i = 0; i < 100; i++)
-                                            {
-                                                rtds.SetData("id", i);
-                                            }
-                                            rtds.AddDimension(dDimName, 0, 100); //was dKey
-                                            vis.updateView(0);
-
-                                            Debug.Log("Replicator::UpdateDatasource before calling  GetStreamData");
-
-                                            if (GetStreamData != null)
-                                            {
-                                                GetStreamData(dPayload, (string topic, string content) =>
-                                                {
-                                                    try
-                                                    {
-                                                        Debug.Log("Replicator::UpdateDatasource OnNewData => " + content);
-                                                        //TODO add here json parser of your choice
+                        Debug.Log("Replicator::UpdateDatasource OnNewData => " + content);
+                        //TODO add here json parser of your choice
 #if true
-                                                        var parsed = new Dictionary<string, string>(); //this is only a placeholder for a json parser
+                        var parsed = new Dictionary<string, string>(); //this is only a placeholder for a json parser
 #else
-                                                        object parsed = Json.JSON.Parse(content);
+                        object parsed = Json.JSON.Parse(content);
 #endif
-                                                        var val = parsed[dKey];
+                        var val = parsed[dKey];
 
-                                                        Debug.Log("Replicator::UpdateDatasource OnNewData parsed[" + dKey + "]=" + val);
+                        Debug.Log("Replicator::UpdateDatasource OnNewData parsed[" + dKey + "]=" + val);
 
-                                                        if (val != null && val.ToString().Length > 0)
-                                                        {
-                                                            double fVal;
-                                                            bool isNum = double.TryParse(val.ToString(), out fVal);
-                                                            if (isNum)
-                                                            {
-                                                                if (rtds != null)
-                                                                {
-                                                                    //rtds.AddDataByStr(dDimName, (float)fVal);
-                                                                    rtds.SetData(dDimName, (float)fVal);
-                                                                }
-                                                                else
-                                                                {
-                                                                    Debug.Log("Replicator::UpdateDatasource rtds is NULL!");
-                                                                }
-                                                            }
-                                                            else
-                                                            {
-                                                                //TODO handle string types here
-                                                            }
-
-                                                            if (vis != null)
-                                                            {
-                                                                vis.updateView(0);
-                                                            }
-                                                            else
-                                                            {
-                                                                Debug.Log("Replicator::UpdateDatasource vis is NULL!");
-                                                            }
-                                                        }
-                                                    }
-                                                    catch (Exception err)
-                                                    {
-                                                        Debug.Log("Replicator::UpdateDatasource ERROR => " + err);
-                                                    }
-                                                    return "";
-                                                });
-                                            }
-                                            dsdef.isSetUp = true;
-                                        }
-                                    }
+                        if (val != null && val.ToString().Length > 0)
+                        {
+                            double fVal;
+                            bool isNum = double.TryParse(val.ToString(), out fVal);
+                            if (isNum)
+                            {
+                                if (rtds != null)
+                                {
+                                    rtds.SetData(dDimName, (float)fVal);
                                 }
+                                else
+                                {
+                                    Debug.Log("Replicator::UpdateDatasource rtds is NULL!");
+                                }
+                            }
+                            else
+                            {
+                                //TODO handle string types here
+                            }
 
+                            if (vis != null)
+                            {
+                                vis.updateView(0);
+                            }
+                            else
+                            {
+                                Debug.Log("Replicator::UpdateDatasource vis is NULL!");
                             }
                         }
                     }
-                }
+                    catch (Exception err)
+                    {
+                        Debug.Log("Replicator::UpdateDatasource ERROR => " + err);
+                    }
+                    return "";
+                });
+                dsdef.isSetUp = true;
             }
         }
 
